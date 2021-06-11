@@ -30,7 +30,7 @@ class UserFixture extends Fixture
             $user->setEmailToken(null,);
             $user->setEmailTokenExpires(new DateTime('now'));
             $user->setResetPasswordToken(null);
-            $user->setResetPasswordExpires(new DateTime('now'));
+            $user->setResetPasswordTokenExpires(new DateTime('now'));
             $user->setAccessToken(null);
 
             $manager->persist($user);

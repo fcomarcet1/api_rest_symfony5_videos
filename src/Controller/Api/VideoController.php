@@ -11,6 +11,30 @@ use Symfony\Component\Routing\Annotation\Route;
  */
 class VideoController extends AbstractController
 {
+
+    /**
+     * Serialize response
+     * @param $data
+     * @return Response
+     */
+    private function resJson($data): Response
+    {
+        // Serializar datos con servicio serializer
+        $json = $this->get('serializer')->serialize($data, 'json');
+
+        // Response con http-foundation
+        $response = new Response();
+
+        // Asignar contenido a la respuesta
+        $response->setContent($json);
+
+        // Indicar formato de respuesta
+        $response->headers->set('Content-Type', 'application/json');
+
+        // Devolver la respuesta
+        return $response;
+    }
+
     /**
      * @Route("/list", name="app_video_list")
      */

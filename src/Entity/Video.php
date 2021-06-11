@@ -6,12 +6,13 @@ use App\Repository\VideoRepository;
 use DateTime;
 use DateTimeInterface;
 use Doctrine\ORM\Mapping as ORM;
+use JsonSerializable;
 
 /**
  * @ORM\Entity(repositoryClass=VideoRepository::class)
  * @ORM\Table(name="videos")
  */
-class Video
+class Video implements JsonSerializable
 {
     /**
      * @ORM\Id
@@ -199,5 +200,19 @@ class Video
         $this->user = $user;
 
         return $this;
+    }
+
+    public function jsonSerialize(): array
+    {
+        return [
+            'id' => $this->id,
+            'title' => $this->title,
+            'description' => $this->description,
+            'url' => $this->url,
+            'status' => $this->status,
+            'createdAt' => $this->createdAt,
+            'updatedAt' => $this->updatedAt,
+
+        ];
     }
 }

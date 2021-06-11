@@ -8,13 +8,14 @@ use DateTimeInterface;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
+use JsonSerializable;
+
 
 /**
  * @ORM\Entity(repositoryClass=UserRepository::class)
  * @ORM\Table(name="`users`")
  */
-class User
+class User implements  JsonSerializable
 {
     /**
      * @ORM\Id
@@ -66,7 +67,7 @@ class User
     /**
      * @ORM\Column(type="datetime", nullable=true)
      */
-    private datetime $updatedAt;
+    private ?datetime $updatedAt;
 
     /**
      * @ORM\Column(type="string", length=255, nullable=true)
@@ -76,7 +77,7 @@ class User
     /**
      * @ORM\Column(type="datetime", nullable=true)
      */
-    private datetime $emailTokenExpires;
+    private ?datetime $emailTokenExpires;
 
     /**
      * @ORM\Column(type="string", length=255, nullable=true)
@@ -86,7 +87,7 @@ class User
     /**
      * @ORM\Column(type="datetime", nullable=true)
      */
-    private datetime $resetPasswordTokenExpires;
+    private ?datetime $resetPasswordTokenExpires;
 
     /**
      * @ORM\Column(type="string", length=255, nullable=true)
@@ -352,18 +353,18 @@ class User
     /**
      * @return DateTimeInterface|null
      */
-    public function getResetPasswordExpires(): ?DateTimeInterface
+    public function getResetPasswordTokenExpires(): ?DateTimeInterface
     {
-        return $this->resetPasswordExpires;
+        return $this->ResetPasswordTokenExpires;
     }
 
     /**
      * @param DateTimeInterface|null $resetPasswordExpires
      * @return $this
      */
-    public function setResetPasswordExpires(?DateTimeInterface $resetPasswordExpires): self
+    public function setResetPasswordTokenExpires(?DateTimeInterface $resetPasswordExpires): self
     {
-        $this->resetPasswordExpires = $resetPasswordExpires;
+        $this->resetPasswordTokenExpires = $resetPasswordExpires;
 
         return $this;
     }
@@ -418,4 +419,23 @@ class User
     }
 
 
+    public function jsonSerialize(): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'surname' => $this->surname,
+            'email' => $this->email,
+            'roles' => $this->roles,
+            'image' => $this->image,
+            'active' => $this->active,
+            'createdAt' => $this->createdAt,
+            'updatedAt' => $this->updatedAt,
+            'emailToken' => $this->emailToken,
+            'emailTokenExpires' =>$this->emailTokenExpires,
+            'resetPasswordToken' => $this->resetPasswordToken,
+            'resetPasswordExpires' => $this->resetPasswordTokenExpires,
+            'accessToken' => $this->accessToken,
+        ];
+    }
 }

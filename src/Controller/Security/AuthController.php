@@ -2,9 +2,17 @@
 
 namespace App\Controller\Security;
 
+use App\Repository\UserRepository;
+use Exception;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Validator\Constraints\Email;
+use Symfony\Component\Validator\Constraints\Length;
+use Symfony\Component\Validator\Constraints\NotBlank;
+use Symfony\Component\Validator\Constraints\Regex;
+use Symfony\Component\Validator\Validation;
 
 /**
  * @Route("/auth")
@@ -37,17 +45,141 @@ class AuthController extends AbstractController
 
     /**
      * @Route("/register", name="app_register")
+     * @param Request $request
+     * @param UserRepository $userRepository
      * @return Response
      */
-    public function register(): Response
+    public function register(Request $request, UserRepository $userRepository): Response
     {
+        // Si recibimos desde un x-www-form-urlencoded
+        /*
+        $name = $request->get('name', null);
+        $surname = $request->get('surname', null);
+        $email = $request->get('email',null);
+        $password = $request->get('password',null);
+        */
+
+        // Desde un raw json
+        // $content = $request->getContent(); // return "name=pepe&surname=lotas&email=pepe%40lotas.es&password=123456"
+        // If the request body is a JSON string, it can be accessed using toArray()
+        //$params = $request->toArray();
+
+
+        // form data key->obj
+        $json = $request->get('json', null);
+
         $data = [
-            'message' => 'Welcome to your new register controller!',
-            'path' => 'src/Controller/AuthController.php',
+            'status' => 'error',
+            'message' => 'Error something wrong in user registration. Try again.'
+        ];
+
+        if ($json === null){
+            $data['code'] = 400;
+            $data['error'] = 'Api cannot receive request data.';
+            return $this->resJson($data);
+        }
+
+        // Decode json
+        try {
+            $params = json_decode($json);
+        }catch (Exception $e){
+            $data['code'] = 400;
+            $data['error'] = 'Api cannot decode json data';
+            return $this->resJson($data);
+        }
+
+        // Check empty fields
+        $name = (!empty($params->name)) ? $params->name : null;
+        $surname = (!empty($params->surname)) ? $params->surname : null;
+        $email = (!empty($params->email)) ? $params->email : null;
+        $password = (!empty($params->password)) ? $params->password : null;
+
+        if ($name === null || $surname === null || $email === null || $password === null){
+            $data['code'] = 400;
+            $data['error'] = 'Any field from registration form is empty';
+            return $this->resJson($data);
+        }
+
+
+        //Validate form fields
+        $validator = Validation::createValidator();
+
+        // name
+        $validateName = $validator->validate($name, [
+            new NotBlank(),
+            new Length([
+                'min' => 2,
+                'max' => 100
+            ]),
+        ]);
+        if (count($validateName) ==! 0 ){
+            $data['code'] = 400;
+            $data['error'] = 'name field is not valid';
+            return $this->resJson($data);
+        }
+
+        $validateSurName = $validator->validate($surname, [
+            new NotBlank(),
+            new Length([
+                'min' => 2,
+                'max' => 100
+            ]),
+        ]);
+        if (count($validateSurName) ==! 0 ){
+            $data['code'] = 400;
+            $data['error'] = 'surname field is not valid';
+            return $this->resJson($data);
+        }
+
+        $validateEmail = $validator->validate($email, [
+            new Email(),
+        ]);
+        if (count($validateEmail) ==! 0 ){
+            $data['code'] = 400;
+            $data['error'] = 'email field is not valid';
+            return $this->resJson($data);
+        }
+
+        /*
+            password requirements:
+            Must be a minimum of 6 characters
+            Must contain at least 1 number
+            Must contain at least one uppercase character
+            Must contain at least one lowercase character
+        */
+        $validatePassword = $validator->validate($password, [
+            new Regex('/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z*_\d]{6,}$/')
+        ]);
+        if (count($validatePassword) ==! 0 ){
+            $data['code'] = 400;
+            $data['error'] = 'password field is not valid. Must be a minimum of 6 characters, 
+                              contain at least 1 number, contain at least one uppercase character,
+                              contain at least one lowercase character';
+
+            return $this->resJson($data);
+        }
+
+        // Return response
+        $data = [
+            'status' => 'success',
+            'code' => 201,
+            'message' => 'User registration successfully',
+            //user' => $user,
         ];
 
         return $this->resJson($data);
     }
+
+    /**
+     * Register using FormType
+     * @param Request $request
+     * @param UserRepository $userRepository
+     */
+    public function registerForm (Request $request, UserRepository $userRepository)
+    {
+
+    }
+
 
     /**
      * @Route("/login", name="app_login")

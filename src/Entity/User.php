@@ -22,7 +22,7 @@ class User implements  JsonSerializable
      * @ORM\GeneratedValue
      * @ORM\Column(type="integer")
      */
-    private int $id;
+    private $id;
 
     /**
      * @ORM\Column(type="string", length=255)
@@ -52,7 +52,7 @@ class User implements  JsonSerializable
     /**
      * @ORM\Column(type="string", length=255, nullable=true)
      */
-    private ?string $image;
+    private $image;
 
     /**
      * @ORM\Column(type="boolean")
@@ -110,12 +110,27 @@ class User implements  JsonSerializable
     /**
      * User constructor.
      */
-    public function __construct()
+    public function __construct(
+        string $name,
+        string $surname,
+        string $email,
+        string $password
+    )
     {
+        $this->name = $name;
+        $this->surname = $surname;
+        $this->email = $email;
+        $this->password = $password;
+
         $this->roles = ['ROLE_USER'];
         $this->createdAt = new DateTime('now');
         $this->updatedAt = new DateTime('now');
         $this->active = false;
+        $this->emailToken = null;
+        $this->emailTokenExpires = null;
+        $this->resetPasswordToken = null;
+        $this->resetPasswordTokenExpires = null;
+        $this->accessToken = null;
         $this->videos = new ArrayCollection();
     }
 

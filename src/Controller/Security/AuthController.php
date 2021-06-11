@@ -2,17 +2,25 @@
 
 namespace App\Controller\Security;
 
+use App\Entity\User;
 use App\Repository\UserRepository;
+use DateInterval;
+use DateTime;
 use Exception;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
+use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Component\Validator\Constraints\Email;
+//use Symfony\Component\Validator\Constraints\Email;
+use Symfony\Component\Mime\Email;
 use Symfony\Component\Validator\Constraints\Length;
 use Symfony\Component\Validator\Constraints\NotBlank;
 use Symfony\Component\Validator\Constraints\Regex;
 use Symfony\Component\Validator\Validation;
+
+
 
 /**
  * @Route("/auth")
@@ -44,12 +52,14 @@ class AuthController extends AbstractController
     }
 
     /**
-     * @Route("/register", name="app_register")
+     * @Route("/register", methods={"POST"}, name="app_register")
      * @param Request $request
+     * @param MailerInterface $mailer
      * @param UserRepository $userRepository
      * @return Response
+     * @throws TransportExceptionInterface
      */
-    public function register(Request $request, UserRepository $userRepository): Response
+    public function register(Request $request, MailerInterface $mailer, UserRepository $userRepository): Response
     {
         // Si recibimos desde un x-www-form-urlencoded
         /*
@@ -89,10 +99,10 @@ class AuthController extends AbstractController
         }
 
         // Check empty fields
-        $name = (!empty($params->name)) ? $params->name : null;
-        $surname = (!empty($params->surname)) ? $params->surname : null;
-        $email = (!empty($params->email)) ? $params->email : null;
-        $password = (!empty($params->password)) ? $params->password : null;
+        $name = (!empty($params->name)) ? trim($params->name) : null;
+        $surname = (!empty($params->surname)) ? trim($params->surname) : null;
+        $email = (!empty($params->email)) ? trim($params->email) : null;
+        $password = (!empty($params->password)) ? trim($params->password) : null;
 
         if ($name === null || $surname === null || $email === null || $password === null){
             $data['code'] = 400;
@@ -132,7 +142,8 @@ class AuthController extends AbstractController
         }
 
         $validateEmail = $validator->validate($email, [
-            new Email(),
+            new Regex('/^([a-z0-9\+_\-]+)(\.[a-z0-9\+_\-]+)*@([a-z0-9\-]+\.)+[a-z]{2,6}$/ix')
+            //new Email(),
         ]);
         if (count($validateEmail) ==! 0 ){
             $data['code'] = 400;
@@ -158,16 +169,82 @@ class AuthController extends AbstractController
 
             return $this->resJson($data);
         }
+        // TODO: revisar no funciona
+        // Check if email exists in DB
+        $issetUser = $userRepository->findBy([
+            'email' => $email,
+        ]);
+
+        if (count($issetUser) >= 1){
+            $data['code'] = 400;
+            $data['error'] = 'You cannot use this email address. This email already in use';
+            return $this->json($data);
+        }
+
+        //die();
+        // Prepare obj user to save in db
+        // Hash password
+        $options = [
+            'cost' => 12,
+        ];
+        $passwordHash = password_hash($password, PASSWORD_BCRYPT, $options);
+
+        // create obj user
+        $user = new User($name, $surname, $email, $passwordHash);
+
+        // Create  email validation token
+        $permitted_chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        $emailToken = substr(str_shuffle($permitted_chars), 0, 10);
+        $user->setEmailToken($emailToken);
+
+        // EmailTokenExpires 1h
+        $dt = new DateTime('now');
+        $emailTokenExpires = $dt->modify('+ 1 hour');
+        $user->setEmailTokenExpires($emailTokenExpires);
+
+
+        //save in db
+        $doctrine = $this->getDoctrine();
+        $em = $doctrine->getManager();
+        $em->persist($user);
+        $em->flush();
+
+
+        // email body
+        $body = "<!DOCTYPE> 
+            <html lang='es'>
+              <body>
+                <h2>Hello from Symfony.</h2> 
+                <h3>Nice to meet you {$user->getName()}! ❤</h3>
+                <p>Your authentication code is : <strong>{$user->getEmailToken()}</strong></p> 
+                <p>Thank you for subscribing. Please confirm your email by clicking on the following link and insert your authentication code</p>
+                <a href=https://localhost:8000/auth/activate> Click here</a>
+                <p>If link doesnt work use this link href=https://localhost:8000/auth/activate</p>  
+                <p>If you have not requested this code please do not reply to this email</p>
+              </body>
+            </html>";
+
+        // TODO: enviar email
+        $email = (new Email())
+            ->from('backend-symfony@example.com')
+            ->to($user->getEmail())
+            ->subject('Welcome to the Space Bar!')
+            //->text('Sending emails is fun again!')
+            ->html($body );
+
+
+        $mailer->send($email);
 
         // Return response
         $data = [
             'status' => 'success',
             'code' => 201,
-            'message' => 'User registration successfully',
-            //user' => $user,
+            'message' => 'User registration successfully. Check your email address for activate your account.',
+            'user' => $user,
         ];
 
-        return $this->resJson($data);
+        return $this->json($data);
+        //return $this->resJson($data);
     }
 
     /**
@@ -180,9 +257,25 @@ class AuthController extends AbstractController
 
     }
 
+    /**
+     * @Route("/activate", methods={"POST","PATCH","PUT"} ,name="app-activate-account")
+     * @param Request $request
+     * @param UserRepository $userRepository
+     * @return Response
+     */
+    public function activateAccount (
+        Request $request,
+        UserRepository $userRepository
+    ): response {
+
+        return $this->json([
+            'message' => 'Welcome to your activateAccount controller!',
+            'path' => 'src/Controller/AuthController.php',
+        ]);
+    }
 
     /**
-     * @Route("/login", name="app_login")
+     * @Route("/login", methods={"POST"}, name="app_login")
      * @return Response
      */
     public function login(): Response

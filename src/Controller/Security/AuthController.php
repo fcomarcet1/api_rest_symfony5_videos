@@ -4,6 +4,7 @@ namespace App\Controller\Security;
 
 use App\Entity\User;
 use App\Repository\UserRepository;
+use App\Services\JwtAuth;
 use DateInterval;
 use DateTime;
 use Exception;
@@ -32,6 +33,7 @@ class AuthController extends AbstractController
 
     /**
      * Serialize response
+     *
      * @param $data
      * @return Response
      */
@@ -65,16 +67,16 @@ class AuthController extends AbstractController
     public function register(
         Request $request,
         MailerInterface $mailer,
-        UserRepository $userRepository): Response
-    {
+        UserRepository $userRepository
+    ): Response {
 
         // default data response.
         $data = [];
 
         //Check if arrive data from request
         if (empty($request->getContent())) {
-            $data['status'] = "error";
-            $data['code'] = 400;
+            $data['status']  = "error";
+            $data['code']    = 400;
             $data['message'] = "API cant recieved request parameters";
 
             return $this->resJson($data);
@@ -98,12 +100,12 @@ class AuthController extends AbstractController
 
         // default data response.
         $data = [
-            'status' => 'error',
-            'message' => 'Error something wrong in user registration. Try again.'
+            'status'  => 'error',
+            'message' => 'Error something wrong in user registration. Try again.',
         ];
 
         if ($json === null) {
-            $data['code'] = 400;
+            $data['code']  = 400;
             $data['error'] = 'Api cannot receive request data.';
             return $this->resJson($data);
         }
@@ -112,19 +114,19 @@ class AuthController extends AbstractController
         try {
             $params = json_decode($json);
         } catch (Exception $e) {
-            $data['code'] = 400;
+            $data['code']  = 400;
             $data['error'] = 'Api cannot decode json data';
             return $this->resJson($data);
         }
 
         // Check empty fields
-        $name = (!empty($params->name)) ? trim($params->name) : null;
-        $surname = (!empty($params->surname)) ? trim($params->surname) : null;
-        $email = (!empty($params->email)) ? trim($params->email) : null;
+        $name     = (!empty($params->name)) ? trim($params->name) : null;
+        $surname  = (!empty($params->surname)) ? trim($params->surname) : null;
+        $email    = (!empty($params->email)) ? trim($params->email) : null;
         $password = (!empty($params->password)) ? trim($params->password) : null;
 
         if ($name === null || $surname === null || $email === null || $password === null) {
-            $data['code'] = 400;
+            $data['code']  = 400;
             $data['error'] = 'Any field from registration form is empty';
             return $this->resJson($data);
         }
@@ -137,11 +139,11 @@ class AuthController extends AbstractController
             new NotBlank(),
             new Length([
                 'min' => 2,
-                'max' => 100
+                'max' => 100,
             ]),
         ]);
         if (count($validateName) == !0) {
-            $data['code'] = 400;
+            $data['code']  = 400;
             $data['error'] = 'name field is not valid';
             return $this->resJson($data);
         }
@@ -150,11 +152,11 @@ class AuthController extends AbstractController
             new NotBlank(),
             new Length([
                 'min' => 2,
-                'max' => 100
+                'max' => 100,
             ]),
         ]);
         if (count($validateSurName) == !0) {
-            $data['code'] = 400;
+            $data['code']  = 400;
             $data['error'] = 'surname field is not valid';
             return $this->resJson($data);
         }
@@ -164,7 +166,7 @@ class AuthController extends AbstractController
             //new Email(),
         ]);
         if (count($validateEmail) == !0) {
-            $data['code'] = 400;
+            $data['code']  = 400;
             $data['error'] = 'email field is not valid';
             return $this->resJson($data);
         }
@@ -177,10 +179,10 @@ class AuthController extends AbstractController
             Must contain at least one lowercase character
         */
         $validatePassword = $validator->validate($password, [
-            new Regex('/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z*_\d]{6,}$/')
+            new Regex('/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z*_\d]{6,}$/'),
         ]);
         if (count($validatePassword) == !0) {
-            $data['code'] = 400;
+            $data['code']  = 400;
             $data['error'] = 'password field is not valid. Must be a minimum of 6 characters, 
                               contain at least 1 number, contain at least one uppercase character,
                               contain at least one lowercase character';
@@ -194,7 +196,7 @@ class AuthController extends AbstractController
         ]);
 
         if (count($issetUser) >= 1) {
-            $data['code'] = 400;
+            $data['code']  = 400;
             $data['error'] = 'You cannot use this email address. This email already in use';
             return $this->json($data);
         }
@@ -213,18 +215,18 @@ class AuthController extends AbstractController
 
         // Create  email validation token
         $permitted_chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        $emailToken = substr(str_shuffle($permitted_chars), 0, 10);
+        $emailToken      = substr(str_shuffle($permitted_chars), 0, 10);
         $user->setEmailToken($emailToken);
 
         // EmailTokenExpires 1h
-        $dt = new DateTime('now');
+        $dt                = new DateTime('now');
         $emailTokenExpires = $dt->modify('+ 1 hour');
         $user->setEmailTokenExpires($emailTokenExpires);
 
 
         //save in db
         $doctrine = $this->getDoctrine();
-        $em = $doctrine->getManager();
+        $em       = $doctrine->getManager();
         $em->persist($user);
         $em->flush();
 
@@ -256,10 +258,10 @@ class AuthController extends AbstractController
 
         // Return response
         $data = [
-            'status' => 'success',
-            'code' => 201,
+            'status'  => 'success',
+            'code'    => 201,
             'message' => 'User registration successfully. Check your email address for activate your account.',
-            'user' => $user,
+            'user'    => $user,
         ];
 
         return $this->json($data);
@@ -268,6 +270,7 @@ class AuthController extends AbstractController
 
     /**
      *  TODO: Register using FormType
+     *
      * @param Request $request
      * @param UserRepository $userRepository
      */
@@ -287,16 +290,15 @@ class AuthController extends AbstractController
     public function activateAccount(
         Request $request,
         UserRepository $userRepository
-    ): response
-    {
+    ): response {
 
         // default data response.
         $data = [];
 
         //Check if arrive data from request
         if (empty($request->getContent())) {
-            $data['status'] = "error";
-            $data['code'] = 400;
+            $data['status']  = "error";
+            $data['code']    = 400;
             $data['message'] = "API cant recieved request parameters";
 
             return $this->resJson($data);
@@ -308,8 +310,8 @@ class AuthController extends AbstractController
 
         // Raw json
         $params = $request->toArray();
-        $data = json_decode($request->getContent(), true);
-        $data2 = json_decode($request->getContent());
+        $data   = json_decode($request->getContent(), true);
+        $data2  = json_decode($request->getContent());
         /*dump($params);
         dump($data);
         dump(($data2));
@@ -335,7 +337,7 @@ class AuthController extends AbstractController
         die();
         $params = json_decode($data);
         dump($params);
-        $code = $params->code;
+        $code  = $params->code;
         $email = $params->email;
 
         // raw json
@@ -345,12 +347,12 @@ class AuthController extends AbstractController
 
         // check if token is valid
         $user = $userRepository->findOneBy([
-            'email' => $email,
+            'email'      => $email,
             'emailToken' => $code,
         ]);
 
         // check if token has expired.
-        $actualTime = new DateTime ('now');
+        $actualTime  = new DateTime ('now');
         $expiredTime = $user->getEmailTokenExpires();
         //if ()
 
@@ -362,7 +364,7 @@ class AuthController extends AbstractController
         die();
         return $this->json([
             'message' => 'Welcome to your activateAccount controller!',
-            'path' => 'src/Controller/AuthController.php',
+            'path'    => 'src/Controller/AuthController.php',
         ]);
     }
 
@@ -370,54 +372,67 @@ class AuthController extends AbstractController
      * @Route("/login", methods={"POST"}, name="app_login")
      * @param Request $request
      * @param UserRepository $userRepository
+     * @param JwtAuth $jwtAuth
      * @return Response
      */
-    public function login(Request $request, UserRepository $userRepository): Response
-    {
+    public function login(
+        Request $request,
+        UserRepository $userRepository,
+        JwtAuth $jwtAuth
+    ): Response {
         // default data response.
         $data = [
-            'message' => 'Error something wrong in user login. Try again.'
+            'message' => 'Error. Something wrong in user login. Try again.',
         ];
 
         //Check if arrive data from request
         if (empty($request->getContent())) {
             $data['status'] = "error";
-            $data['code'] = 400;
-            $data['error'] = "API cant received request parameters";
+            $data['code']   = 400;
+            $data['error']  = "API cant received request parameters";
 
             return $this->resJson($data);
         }
 
-
-        try{
+        try {
             // Get email, password from request
             $params = $request->getContent();
 
             // decode to json string && trim
             $paramsDecoded = json_decode($params);
 
-            if (
-                !isset($paramsDecoded->email) ||
-                $paramsDecoded->email === null ||
-                empty($paramsDecoded->email)
-            ){
+            // Check if email is null
+            if (!isset($paramsDecoded->email) || $paramsDecoded->email === null) {
                 $data['status'] = "error";
-                $data['code'] = 400;
-                $data['error'] = "Email field from login form not received";
+                $data['code']   = 400;
+                $data['error']  = "Email field from login form not received";
+
+                return $this->resJson($data);
+            }
+
+            // check if email is empty
+            if (empty($paramsDecoded->email)) {
+                $data['status'] = "error";
+                $data['code']   = 400;
+                $data['error']  = "Email field from login is empty";
 
                 return $this->resJson($data);
             }
 
             $email = trim($paramsDecoded->email);
 
-            if (
-                !isset($paramsDecoded->password) ||
-                $paramsDecoded->password === null ||
-                empty($paramsDecoded->password)
-            ){
+            if (!isset($paramsDecoded->password) || $paramsDecoded->password === null) {
                 $data['status'] = "error";
-                $data['code'] = 400;
-                $data['error'] = "Password field from login form not received";
+                $data['code']   = 400;
+                $data['error']  = "Password field from login form not received";
+
+                return $this->resJson($data);
+            }
+            // check if password is empty
+            if (empty($paramsDecoded->password)) {
+                $data['status'] = "error";
+                $data['code']   = 400;
+                $data['error']  = "Password field from login is empty";
 
                 return $this->resJson($data);
             }
@@ -427,11 +442,10 @@ class AuthController extends AbstractController
             // if arrives $getToken
             $getToken = (!empty($paramsDecoded->getToken)) ? $paramsDecoded->getToken : null;
 
-        }catch (Exception $error){
-
+        } catch (Exception $error) {
             $data['status'] = "error";
-            $data['code'] = 400;
-            $data['error'] = $error->getMessage();
+            $data['code']   = 400;
+            $data['error']  = $error->getMessage();
 
             return $this->resJson($data);
         }
@@ -444,51 +458,84 @@ class AuthController extends AbstractController
             new Regex('/^([a-z0-9\+_\-]+)(\.[a-z0-9\+_\-]+)*@([a-z0-9\-]+\.)+[a-z]{2,6}$/ix')
             //new Email(),
         ]);
-        if (count($validateEmail) == !0) {
+
+        if (count($validateEmail) !== 0) {
             $data['status'] = 'error';
-            $data['code'] = 400;
-            $data['error'] = 'Email field is not valid';
+            $data['code']   = 400;
+            $data['error']  = 'Email field is not valid';
+
             return $this->resJson($data);
         }
 
-        //Check credentials in DB
+        // TODO: ¿Validate password?
+
         // Get user from DB
-        $user = $userRepository->findOneBy([
-            'email' => $email
-        ]);
+        $user = $userRepository->findOneBy(['email' => $email,]);
 
-        if (!$user || empty($user)){
-            $data['status'] = 'error';
-            $data['code'] = 404;
-            $data['error'] = 'The email entered does not match any registered user';
+        // Meter todos services(createToken, checkCredential en jwtSignIn)
+        $checkCredentials = $jwtAuth->checkCredentials($email, $plainPassword);
 
-            return $this->resJson($data);
-        }
-
-        // Verify hashed password
-        $passwordHash = $user->getPassword();
-        $passwordVerify = password_verify($plainPassword, $passwordHash);
-
-        if (!$passwordVerify){
-            $data['status'] = 'error';
-            $data['code'] = 404;
-            $data['error'] = 'Invalid credentials';
+        if ($checkCredentials['status'] === 'error' && $checkCredentials['error']) {
+            $data['status']  = "error";
+            $data['code']    = 400;
+            $data['message'] = "Error. Something wrong in user login. Try again.";
+            $data['error']   = $checkCredentials['message'];
 
             return $this->resJson($data);
         }
 
-        // Create authentication token with JwtService.
 
 
-        // Return response
-        $data = [
-            'status' => 'success',
-            'code' => 200,
-            'message' => 'User login successfully.',
-            'AuthToken' => 'TokenLerele',
-            'user' => 'user_logged'
-        ];
+
+        // jwtSignIn() = checkCredentials + createToken
+        $jwtSignIn = $jwtAuth->jwtSignIn($email, $plainPassword); // return ['status','error', 'message', 'token']
+        if (isset($jwtSignIn['status']) && isset($jwtSignIn['error']) && $jwtSignIn['status'] = 'error' ) {
+            $data['status']  = "error";
+            $data['code']    = 400;
+            $data['message'] = "Error. Something wrong in user login. Try again.";
+            $data['error']   = $jwtSignIn['message'];
+
+            return $this->resJson($data);
+        }
+
+        if ($jwtSignIn['status'] === 'success') {
+            // get token from jwtSignIn service
+            $authToken = $jwtSignIn['authToken'];
+
+            // if arrives flag getToken = true -> return token else only identity
+            if($getToken){
+
+                // Return response
+                $data = [
+                    'status'    => 'success',
+                    'code'      => 200,
+                    'message'   => 'User login successfully.',
+                    'AuthToken' => $authToken,
+                ];
+            }
+            else{
+                $identity = $jwtAuth->getCredentials($authToken);
+                if (isset($identity['status']) && isset($identity['error']) && $identity['status'] === 'error'){
+                    $data['status']  = "error";
+                    $data['code']    = 400;
+                    $data['message'] = "Error. Something wrong in user login. Try again.";
+                    $data['error']   = $identity['message'];
+
+                    return $this->resJson($data);
+                }
+
+                // Return response
+                $data = [
+                    'status'    => 'success',
+                    'code'      => 200,
+                    'message'   => 'User login successfully.',
+                    'identity' => $identity,
+                ];
+            }
+
+        }
 
         return $this->resJson($data);
+
     }
 }

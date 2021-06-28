@@ -157,23 +157,6 @@ class JwtAuth
             return $data;
         }
 
-        // TODO: usar directamente userRepository
-        // check if user exist in DB
-        /*$user = $this->manager->getRepository(User::class)
-            ->findOneBy([
-                'email' => $email,
-            ]);
-
-        // create token
-        $authToken = $this->createToken($user);
-
-        // flag getToken()
-        if ($getToken || $getToken !== null || !empty($getToken)) {
-            $data['user'] = $this->getCredentials($authToken);
-            //$data['user'] = JWT::decode($authToken, $this->jwtSecret, ['HS512']);
-        }*/
-
-
         // return data
         $data['status']    = 'success';
         $data['authToken'] = $authToken;

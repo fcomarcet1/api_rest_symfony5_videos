@@ -189,7 +189,7 @@ class AuthController extends AbstractController
 
             return $this->resJson($data);
         }
-        // TODO: revisar no funciona
+
         // Check if email exists in DB
         $issetUser = $userRepository->findBy([
             'email' => $email,
@@ -201,7 +201,6 @@ class AuthController extends AbstractController
             return $this->json($data);
         }
 
-        //die();
         // Prepare obj user to save in db
         // Hash password
         $options = [
@@ -280,7 +279,7 @@ class AuthController extends AbstractController
     }
 
     /**
-     * TODO: ACABAR
+     * TODO: ACABAR activateAccount
      *
      * @Route("/activate", methods={"POST","PATCH","PUT"} ,name="app-activate-account")
      * @param Request $request
@@ -484,12 +483,9 @@ class AuthController extends AbstractController
             return $this->resJson($data);
         }
 
-
-
-
         // jwtSignIn() = checkCredentials + createToken
         $jwtSignIn = $jwtAuth->jwtSignIn($email, $plainPassword); // return ['status','error', 'message', 'token']
-        if (isset($jwtSignIn['status']) && isset($jwtSignIn['error']) && $jwtSignIn['status'] = 'error' ) {
+        if (isset($jwtSignIn['status']) && isset($jwtSignIn['error']) && $jwtSignIn['status'] = 'error') {
             $data['status']  = "error";
             $data['code']    = 400;
             $data['message'] = "Error. Something wrong in user login. Try again.";
@@ -503,7 +499,7 @@ class AuthController extends AbstractController
             $authToken = $jwtSignIn['authToken'];
 
             // if arrives flag getToken = true -> return token else only identity
-            if($getToken){
+            if ($getToken) {
 
                 // Return response
                 $data = [
@@ -513,9 +509,9 @@ class AuthController extends AbstractController
                     'AuthToken' => $authToken,
                 ];
             }
-            else{
+            else {
                 $identity = $jwtAuth->getCredentials($authToken);
-                if (isset($identity['status']) && isset($identity['error']) && $identity['status'] === 'error'){
+                if (isset($identity['status']) && isset($identity['error']) && $identity['status'] === 'error') {
                     $data['status']  = "error";
                     $data['code']    = 400;
                     $data['message'] = "Error. Something wrong in user login. Try again.";
@@ -526,9 +522,9 @@ class AuthController extends AbstractController
 
                 // Return response
                 $data = [
-                    'status'    => 'success',
-                    'code'      => 200,
-                    'message'   => 'User login successfully.',
+                    'status'   => 'success',
+                    'code'     => 200,
+                    'message'  => 'User login successfully.',
                     'identity' => $identity,
                 ];
             }

@@ -2,7 +2,11 @@
 
 namespace App\Controller\Api;
 
+use App\Repository\VideoRepository;
+use App\Services\JwtAuth;
+use App\Services\Utils\CheckRequest;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 
@@ -14,6 +18,7 @@ class VideoController extends AbstractController
 
     /**
      * Serialize response
+     *
      * @param $data
      * @return Response
      */
@@ -36,13 +41,55 @@ class VideoController extends AbstractController
     }
 
     /**
-     * @Route("/list", name="app_video_list")
+     * Lists all videos.
+     *
+     * @Route("/", methods={"GET"}, name="app_video_show")
+     * @param VideoRepository $videoRepository
+     * @return response
      */
-    public function index(): Response
+    public function index(VideoRepository $videoRepository): Response
     {
-        return $this->json([
-            'message' => 'Welcome to your new video list controller!',
-            'path' => 'src/Controller/VideoController.php',
+        $videos = $videoRepository->findAll();
+        if (count($videos) <= 0) {
+            return $this->resJson([
+                'status'  => 'error',
+                'code'    => 400,
+                'message' => 'Ops nothing to see. Create a new video',
+            ]);
+        }
+
+        return $this->resJson([
+            'status'  => 'success',
+            'code'    => 200,
+            'message' => 'Videos list',
+            'videos'  => $videos,
         ]);
+    }
+
+    /**
+     * Create new video
+     *
+     * @Route("/create", methods={"POST"}, name="app_video_create")
+     * @param Request $request
+     * @param VideoRepository $videoRepository
+     * @param JwtAuth $jwtAuth
+     * @param CheckRequest $checkRequest
+     * @return Response
+     */
+    public function create(
+        Request $request,
+        VideoRepository $videoRepository,
+        JwtAuth $jwtAuth,
+        CheckRequest $checkRequest
+    ): Response {
+
+        // default response
+        $data = [
+            'message' => 'test videoController create video ',
+        ];
+
+        return $this->resJson($data);
+
+
     }
 }

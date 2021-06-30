@@ -212,6 +212,7 @@ class Video implements JsonSerializable
             'status' => $this->status,
             'createdAt' => $this->createdAt,
             'updatedAt' => $this->updatedAt,
+            'userId' =>$this->user,
 
         ];
     }

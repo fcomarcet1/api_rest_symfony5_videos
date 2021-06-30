@@ -77,7 +77,7 @@ class AuthController extends AbstractController
         if (empty($request->getContent())) {
             $data['status']  = "error";
             $data['code']    = 400;
-            $data['message'] = "API cant recieved request parameters";
+            $data['message'] = "API cant received request parameters";
 
             return $this->resJson($data);
         }
@@ -374,11 +374,8 @@ class AuthController extends AbstractController
      * @param JwtAuth $jwtAuth
      * @return Response
      */
-    public function login(
-        Request $request,
-        UserRepository $userRepository,
-        JwtAuth $jwtAuth
-    ): Response {
+    public function login(Request $request, UserRepository $userRepository, JwtAuth $jwtAuth): Response
+    {
         // default data response.
         $data = [
             'message' => 'Error. Something wrong in user login. Try again.',
@@ -496,22 +493,40 @@ class AuthController extends AbstractController
 
         if ($jwtSignIn['status'] === 'success') {
             // get token from jwtSignIn service
-            $authToken = $jwtSignIn['authToken'];
+            $authToken =$jwtSignIn['authToken'];
+            $tokenSaved = $user->getAccessToken();
+
+            // set null accessToken
+
+
+            // TODO: implementar servicio save in db
+            // Save authToken in DB
+            $user->setAccessToken($jwtSignIn['authToken']);
+
+            $doctrine = $this->getDoctrine();
+            $em       = $doctrine->getManager();
+            $em->persist($user);
+            $em->flush();
+
+            $userSaved = $userRepository->findOneBy(['id' => $user->getId()]);
+            $updatedToken = $userSaved->getAccessToken();
+
 
             // if arrives flag getToken = true -> return token else only identity
             if ($getToken) {
-
                 // Return response
                 $data = [
                     'status'    => 'success',
                     'code'      => 200,
                     'message'   => 'User login successfully.',
                     'AuthToken' => $authToken,
+                    //'userSaved' => $userSaved,//
                 ];
             }
             else {
+                // TODO: change return getCredential -> obj
                 $identity = $jwtAuth->getCredentials($authToken);
-                if (isset($identity['status']) && isset($identity['error']) && $identity['status'] === 'error') {
+                if (!is_object($identity)) {
                     $data['status']  = "error";
                     $data['code']    = 400;
                     $data['message'] = "Error. Something wrong in user login. Try again.";
@@ -520,12 +535,22 @@ class AuthController extends AbstractController
                     return $this->resJson($data);
                 }
 
+                /*if (isset($identity['status']) && isset($identity['error']) && $identity['status'] === 'error') {
+                    $data['status']  = "error";
+                    $data['code']    = 400;
+                    $data['message'] = "Error. Something wrong in user login. Try again.";
+                    $data['error']   = $identity['message'];
+
+                    return $this->resJson($data);
+                }*/
+
                 // Return response
                 $data = [
                     'status'   => 'success',
                     'code'     => 200,
                     'message'  => 'User login successfully.',
                     'identity' => $identity,
+                    //'AuthToken' => $authToken,//
                 ];
             }
 

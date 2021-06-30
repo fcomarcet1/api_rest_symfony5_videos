@@ -4,10 +4,18 @@ namespace App\Services;
 
 use App\Entity\User;
 use App\Repository\UserRepository;
+use DomainException;
 use Firebase\JWT\JWT;
 use Exception;
+use http\Client\Request;
 use Symfony\Component\Uid\Uuid;
+use Symfony\Component\Validator\Exception\UnexpectedValueException;
 
+/**
+ * Class JwtAuth
+ *
+ * @package App\Services
+ */
 class JwtAuth
 {
 
@@ -122,7 +130,7 @@ class JwtAuth
     }
 
     /**
-     *
+     * jwt Service for checkCredentials + create token +
      *
      * @param string $email
      * @param string $password
@@ -181,6 +189,8 @@ class JwtAuth
     }
 
     /**
+     * Get identity from user
+     *
      * @param string $token
      * @return array|object
      */
@@ -189,16 +199,16 @@ class JwtAuth
         $credentials = [];
 
         try {
-            $jwtDecoded     = JWT::decode($token, $this->jwtSecret, ['HS512']);
-            $userId         = $jwtDecoded->sub;
+            $jwtDecoded = JWT::decode($token, $this->jwtSecret, ['HS512']);
+            $userId     = $jwtDecoded->sub;
 
             // Find user in DB
             $userRepository = $this->userRepository;
             $user           = $userRepository->findOneBy(['id' => $userId]);
 
-            $credentials['identity'] = $user;
+            //$credentials['identity'] = $user;
 
-        } catch (Exception $error) {
+        } catch (UnexpectedValueException | DomainException  $error) {
             return [
                 'status'  => 'error',
                 'error'   => true,
@@ -207,16 +217,79 @@ class JwtAuth
 
         }
 
-        return $credentials;
+        return $user;
     }
 
     /**
+     * Check if authToken is valid
+     *
      * @param string $token
+     * @param null $getIdentity
+     * @return array|object
      */
-    public function checkToken(string $token)
+    public function checkAuthToken(string $token, $identity = null)
     {
+        try {
 
+            // Remove spaces and ""
+            $trimToken = trim($token);
+            $authToken = str_replace('"', '', $token);
 
+            $jwtDecoded = JWT::decode($authToken, $this->jwtSecret, ['HS512']);
+            $userId     = $jwtDecoded->sub;
+
+            // Access userRepository(injected in constructor).
+            $userRepository = $this->userRepository;
+
+            // Check if exist authToken in DB
+            $user = $userRepository->findOneBy(['id' => $userId, 'accessToken' => $authToken]);
+
+            if ($user === null || !is_object($user) || empty($user)) {
+                return [
+                    'status'  => 'error',
+                    'error'   => true,
+                    'message' => 'Forbidden access. Wrong authToken',
+                ];
+            }
+
+            //if token has expired delete in db.
+            $todayDate      = time();
+            $expirationDate = $jwtDecoded->exp;
+
+            /* if ($expirationDate > $todayDate) {//valid token} else {//token expired} */
+            if ($expirationDate < $todayDate) {
+                // token expired
+                return [
+                    'status'  => 'error',
+                    'error'   => true,
+                    'message' => 'Forbidden access. Wrong authToken(expired)',
+                ];
+
+            }
+            $userRepository = $this->userRepository;
+            $userId         = $jwtDecoded->sub;
+            $user           = $userRepository->findOneBy(['id' => $userId]);
+
+            // Return true or identity if exist flag getIdentity
+            if (isset($identity) || $identity !== null) {
+                return $user;
+            }
+            else {
+                return ['status' => 'success',];
+            }
+
+            //return true;
+
+        } catch (UnexpectedValueException | DomainException  $e) {
+            return [
+                'status'  => 'error',
+                'error'   => true,
+                'message' => "Error. Cannot checkAuthToken: " . $e,
+            ];
+
+        }
+
+        //return true;
     }
 
 

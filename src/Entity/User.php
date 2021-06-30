@@ -90,7 +90,7 @@ class User implements  JsonSerializable
     private ?datetime $resetPasswordTokenExpires;
 
     /**
-     * @ORM\Column(type="string", length=255, nullable=true)
+     * @ORM\Column(type="string", length=512, nullable=true)
      */
     private ?string $accessToken;
 

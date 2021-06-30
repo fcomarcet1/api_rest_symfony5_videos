@@ -61,8 +61,13 @@ class Video implements JsonSerializable
     /**
      * Video constructor.
      */
-    public function __construct()
+    public function __construct(string $title, string $description, string $url,User $user)
     {
+        $this->title = $title;
+        $this->description = $description;
+        $this->url = $url;
+        $this->user = $user;
+
         $this->status = null;
         $this->createdAt = new DateTime('now');
         $this->updatedAt = new DateTime('now');

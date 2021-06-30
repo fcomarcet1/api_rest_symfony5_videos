@@ -223,7 +223,7 @@ class UserController extends AbstractController
         ]);
 
         // Check unique email
-        $email = strtolower($email);
+        $email      = strtolower($email);
         $issetEmail = $userRepository->findOneBy([
             'email' => $email,
         ]);
@@ -316,19 +316,53 @@ class UserController extends AbstractController
 
             return $this->resJson($data);
         }
-        // en el front meter password para eliminar cuenta usuario
-        $userId = $checkAuthToken->sub;
+        // Get UserId from logged user
+        $userId = $checkAuthToken->getId();
 
-        // $doctrine = $this->getDoctrine();
-        // $em = $doctrine->getManager();
-        // $video = $doctrine->getRepository(Video::class)->findOneBy(['id'=>$id]);
-        $user = $userRepository->findOneBy(['id' => $userId]);
-        // $em->remove($video);
-        // $em->flush();
+        try {
+            // Get password from json
+            $params        = json_decode($request->getContent());
+            $plainPassword = $params->password;
 
-        return $this->json([
-            'message' => 'Welcome to your new user delete controller!',
-            'path'    => 'src/Controller/UserController.php',
+        } catch (Exception $e) {
+            $data['status']  = "error";
+            $data['code']    = 400;
+            $data['message'] = "Error. Something wrong in user delete. Try again.";
+            $data['error']   = $e;
+
+            return $this->resJson($data);
+        }
+
+        // Check if password is valid
+        // get password from db
+        $user = $userRepository->findOneBy([
+            'id' => $userId,
+        ]);
+
+        $passwordHashed = $user->getPassword();
+        $passwordVerify = $jwtAuth->verifyPassword($plainPassword, $passwordHashed);
+
+        if (!$passwordVerify) {
+            $data['status']  = "error";
+            $data['code']    = 400;
+            $data['message'] = "Error. Invalid password. Try again.";
+
+            return $this->resJson($data);
+        }
+
+        //TODO: DELETE ALL VIDEOS FROM USER
+
+        // Delete user from database
+        $doctrine = $this->getDoctrine();
+        $em = $doctrine->getManager();
+        $em->remove($user);
+        $em->flush();
+
+
+        return $this->resJson([
+            'status'  => 'success',
+            'code' => 200,
+            'message' => 'User deleted!',
         ]);
     }
 }

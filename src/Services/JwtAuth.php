@@ -184,7 +184,6 @@ class JwtAuth
         if (!$passwordVerify) {
             return false;
         }
-
         return true;
     }
 

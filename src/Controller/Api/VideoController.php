@@ -49,12 +49,11 @@ class VideoController extends AbstractController
         return $response;
     }
 
-    //TODO: añadir paginacion
 
     /**
-     * Lists all videos.
+     * Lists all videos paginated.
      *
-     * @Route("/", methods={"GET"}, name="app_video_show")
+     * @Route("/", methods={"GET"}, name="app_video_list")
      *
      * @param Request $request
      * @param CheckRequest $checkRequest
@@ -72,15 +71,6 @@ class VideoController extends AbstractController
         EntityManagerInterface $em,
         PaginatorInterface $paginator
     ): Response {
-        // check request with checkRequest service
-        $validateRequest = $checkRequest->validateRequest($request);
-        if (!$validateRequest) {
-            $data['status']  = "error";
-            $data['code']    = 400;
-            $data['message'] = "API cant received request parameters";
-
-            return $this->resJson($data);
-        }
 
         // Default response
         $data = [];
@@ -109,7 +99,47 @@ class VideoController extends AbstractController
             return $this->resJson($data);
         }
 
-        $videos = $videoRepository->findAll();
+        // Get credentials from user logged(save in $checkAuthToken)
+        $userId = $checkAuthToken->getId();
+
+        // dql query  $dql = "SELECT v FROM App\Entity\Video v WHERE v.user = {$identity->sub} ORDER BY v.id DESC";
+        $dql   = "SELECT v FROM App\Entity\Video v ORDER BY v.id DESC";
+        $query = $em->createQuery($dql);
+
+        // Get page parameter from url
+        $page           = $request->query->getInt('page', 1);
+        $items_per_page = 6;
+
+        // Invoke pagination
+        $pagination = $paginator->paginate($query, $page, $items_per_page);
+        $total      = $pagination->getTotalItemCount();
+
+        if (count($pagination) === 0) {
+            $data = [
+                'status' => 'success',
+                'code'   => 200,
+                'message' => 'No hay videos que mostrar actualmente'
+            ];
+
+            return $this->resJson($data);
+        }
+
+        // Return response
+        $data = [
+            'status'            => 'success',
+            'code'              => 200,
+            'total_items_count' => $total,
+            'page_actual'       => $page,
+            'items_per_page'    => $items_per_page,
+            'total_pages'       => ceil($total / $items_per_page),
+            'videos'            => $pagination,
+            'user_id'           => $userId,
+        ];
+
+        return $this->resJson([$data]);
+
+
+        /*$videos = $videoRepository->findAll();
         if (count($videos) <= 0) {
             return $this->resJson([
                 'status'  => 'error',
@@ -123,7 +153,86 @@ class VideoController extends AbstractController
             'code'    => 200,
             'message' => 'Videos list',
             'videos'  => $videos,
-        ]);
+        ]);*/
+    }
+
+    /**
+     * All videos by user(My videos)
+     *
+     * @Route("/my-videos", methods={"GET"}, name="app_video_my_videos")
+     *
+     * @param Request $request
+     * @param CheckRequest $checkRequest
+     * @param VideoRepository $videoRepository
+     * @param JwtAuth $jwtAuth
+     * @param EntityManagerInterface $em
+     * @param PaginatorInterface $paginator
+     * @return Response
+     */
+    public function getMyVideos(
+        Request $request,
+        CheckRequest $checkRequest,
+        VideoRepository $videoRepository,
+        JwtAuth $jwtAuth,
+        EntityManagerInterface $em,
+        PaginatorInterface $paginator
+    ): Response {
+
+        // Default response
+        $data = [];
+
+        // Check data from request
+        // Get auth headers(token)
+        $authToken = $request->headers->get('Authorization');
+        if (!isset($authToken) || empty($authToken)) {
+            $data['status']  = 'error';
+            $data['code']    = 400;
+            $data['message'] = "Forbidden access. API cannot received authorization token";
+
+            return $this->resJson($data);
+        }
+
+        // Make service checkAuthToken
+        $checkAuthToken = $jwtAuth->checkAuthToken($authToken, $identity = true);
+        // return obj User($identity = true) | array,
+
+        if (!is_object($checkAuthToken) && $checkAuthToken['status'] === 'error') {
+            $data['status']  = "error";
+            $data['code']    = 400;
+            $data['message'] = "Error. Something wrong in user update. Try again.";
+            $data['error']   = $checkAuthToken['message'];
+
+            return $this->resJson($data);
+        }
+
+        // Get credentials from user logged(save in $checkAuthToken)
+        $userId = $checkAuthToken->getId();
+
+        // dql query  $dql = "SELECT v FROM App\Entity\Video v WHERE v.user = {$identity->sub} ORDER BY v.id DESC";
+        $dql   = "SELECT v FROM App\Entity\Video v WHERE v.user = {$userId} ORDER BY v.id DESC";
+        $query = $em->createQuery($dql);
+
+        // Get page parameter from url
+        $page           = $request->query->getInt('page', 1);
+        $items_per_page = 6;
+
+        // Invoke pagination
+        $pagination = $paginator->paginate($query, $page, $items_per_page);
+        $total      = $pagination->getTotalItemCount();
+
+        // Return response
+        $data = [
+            'status'            => 'success',
+            'code'              => 200,
+            'total_items_count' => $total,
+            'page_actual'       => $page,
+            'items_per_page'    => $items_per_page,
+            'total_pages'       => ceil($total / $items_per_page),
+            'videos'            => $pagination,
+            'user_id'           => $userId,
+        ];
+
+        return $this->resJson([$data]);
     }
 
     /**
@@ -257,10 +366,10 @@ class VideoController extends AbstractController
 
         // create new obj video
         $user = $userRepository->findOneBy([
-            'id' =>  $userId,
+            'id' => $userId,
         ]);
 
-        $video  = new Video($title, $description, $url, $user);
+        $video = new Video($title, $description, $url, $user);
         $video->setStatus('normal');
 
         // save in db

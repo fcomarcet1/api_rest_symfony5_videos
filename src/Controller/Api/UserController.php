@@ -99,8 +99,8 @@ class UserController extends AbstractController
      * @param JwtAuth $jwtAuth
      * @param UserRepository $userRepository
      * @param CheckRequest $checkRequest . Service for check request.
+     * @param EntityManagerInterface $em
      * @return Response
-     * @throws \Exception
      */
     public function update(
         Request $request,
@@ -273,6 +273,7 @@ class UserController extends AbstractController
      * @param JwtAuth $jwtAuth JwtAuth service.
      * @param CheckRequest $checkRequest
      * @param UserRepository $userRepository
+     * @param EntityManagerInterface $em
      * @param null $id
      * @return Response
      */

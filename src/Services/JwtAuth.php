@@ -220,10 +220,10 @@ class JwtAuth
     }
 
     /**
-     * Check if authToken is valid
+     * Check if authToken is valid and return obj user when flag $identity = true
      *
      * @param string $token
-     * @param null $getIdentity
+     * @param null $identity
      * @return array|object
      */
     public function checkAuthToken(string $token, $identity = null)

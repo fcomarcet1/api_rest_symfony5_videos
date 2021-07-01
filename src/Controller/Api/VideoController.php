@@ -7,6 +7,8 @@ use App\Repository\UserRepository;
 use App\Repository\VideoRepository;
 use App\Services\JwtAuth;
 use App\Services\Utils\CheckRequest;
+use Doctrine\ORM\EntityManagerInterface;
+use Knp\Component\Pager\PaginatorInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Config\Definition\Exception\Exception;
 use Symfony\Component\HttpFoundation\Request;
@@ -48,6 +50,7 @@ class VideoController extends AbstractController
     }
 
     //TODO: añadir paginacion
+
     /**
      * Lists all videos.
      *
@@ -57,13 +60,17 @@ class VideoController extends AbstractController
      * @param CheckRequest $checkRequest
      * @param JwtAuth $jwtAuth
      * @param VideoRepository $videoRepository
+     * @param EntityManagerInterface $em
+     * @param PaginatorInterface $paginator
      * @return response
      */
     public function index(
         Request $request,
         CheckRequest $checkRequest,
         JwtAuth $jwtAuth,
-        VideoRepository $videoRepository
+        VideoRepository $videoRepository,
+        EntityManagerInterface $em,
+        PaginatorInterface $paginator
     ): Response {
         // check request with checkRequest service
         $validateRequest = $checkRequest->validateRequest($request);
@@ -128,6 +135,7 @@ class VideoController extends AbstractController
      * @param UserRepository $userRepository
      * @param JwtAuth $jwtAuth
      * @param CheckRequest $checkRequest
+     * @param EntityManagerInterface $em
      * @return Response
      */
     public function create(
@@ -135,7 +143,8 @@ class VideoController extends AbstractController
         VideoRepository $videoRepository,
         UserRepository $userRepository,
         JwtAuth $jwtAuth,
-        CheckRequest $checkRequest
+        CheckRequest $checkRequest,
+        EntityManagerInterface $em
     ): Response {
 
         // check request with checkRequest service
@@ -255,8 +264,8 @@ class VideoController extends AbstractController
         $video->setStatus('normal');
 
         // save in db
-        $doctrine = $this->getDoctrine();
-        $em       = $doctrine->getManager();
+        //$doctrine = $this->getDoctrine();
+        //$em       = $doctrine->getManager();
         $em->persist($video);
         $em->flush();
 

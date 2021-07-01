@@ -8,6 +8,7 @@ use App\Services\JwtAuth;
 use App\Services\Utils\CheckRequest;
 use DateTime;
 use DateTimeZone;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Config\Definition\Exception\Exception;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -98,15 +99,16 @@ class UserController extends AbstractController
      * @param JwtAuth $jwtAuth
      * @param UserRepository $userRepository
      * @param CheckRequest $checkRequest . Service for check request.
-     * @return JsonResponse|Response
+     * @return Response
      * @throws \Exception
      */
     public function update(
         Request $request,
         JwtAuth $jwtAuth,
         UserRepository $userRepository,
-        CheckRequest $checkRequest
-    ) {
+        CheckRequest $checkRequest,
+        EntityManagerInterface $em
+    ): Response {
         // check request with checkRequest service
         $validateRequest = $checkRequest->validateRequest($request);
         if (!$validateRequest) {
@@ -244,9 +246,8 @@ class UserController extends AbstractController
         $user->setUpdatedAt(new DateTime('now'));
 
         // update data
-        $doctrine = $this->getDoctrine();
-        $em       = $doctrine->getManager();
-
+        //$doctrine = $this->getDoctrine();
+        //$em       = $doctrine->getManager();
         $em->persist($user);
         $em->flush();
 
@@ -273,15 +274,16 @@ class UserController extends AbstractController
      * @param CheckRequest $checkRequest
      * @param UserRepository $userRepository
      * @param null $id
-     * @return JsonResponse|Response
+     * @return Response
      */
     public function delete(
         Request $request,
         JwtAuth $jwtAuth,
         CheckRequest $checkRequest,
         UserRepository $userRepository,
+        EntityManagerInterface $em,
         $id = null
-    ) {
+    ): Response {
         // check request with checkRequest service
         $validateRequest = $checkRequest->validateRequest($request);
         if (!$validateRequest) {
@@ -353,8 +355,8 @@ class UserController extends AbstractController
         //TODO: DELETE ALL VIDEOS FROM USER
 
         // Delete user from database
-        $doctrine = $this->getDoctrine();
-        $em = $doctrine->getManager();
+        //$doctrine = $this->getDoctrine();
+        //$em = $doctrine->getManager();
         $em->remove($user);
         $em->flush();
 

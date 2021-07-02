@@ -7,6 +7,7 @@ use App\Repository\UserRepository;
 use App\Repository\VideoRepository;
 use App\Services\JwtAuth;
 use App\Services\Utils\CheckRequest;
+use DateTime;
 use Doctrine\ORM\EntityManagerInterface;
 use Knp\Component\Pager\PaginatorInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -278,7 +279,6 @@ class VideoController extends AbstractController
             return $this->resJson($data);
         }
 
-
         try {
             // Get data from request
             $params = json_decode($request->getContent());
@@ -292,7 +292,6 @@ class VideoController extends AbstractController
             return $this->resJson($data);
         }
 
-        //
         $title       = (!empty($params->title)) ? trim($params->title) : null;
         $description = (!empty($params->description)) ? trim($params->description) : null;
         $url         = (!empty($params->url)) ? trim($params->url) : null;
@@ -346,6 +345,7 @@ class VideoController extends AbstractController
 
             return $this->resJson($data);
         }
+
         // get userId from logged user
         $userId = $checkAuthToken->getId();
 
@@ -395,8 +395,6 @@ class VideoController extends AbstractController
     ): Response {
 
 
-
-
         return $this->resJson([
             'message'  => ' video detail',
             'video_id' => (int)$id,
@@ -407,21 +405,172 @@ class VideoController extends AbstractController
     /**
      * Update video
      *
-     * @Route("/update", methods={"PUT","PATCH","POST"}, name="app_video_update")
+     * @Route("/update/{id}", methods={"PUT","PATCH","POST"}, name="app_video_update")
      * @param Request $request
      * @param CheckRequest $checkRequest
      * @param JwtAuth $jwtAuth
+     * @param UserRepository $userRepository
+     * @param VideoRepository $videoRepository
      * @param EntityManagerInterface $em
+     * @param null $id
      * @return Response
      */
     public function update(
         Request $request,
         CheckRequest $checkRequest,
         JwtAuth $jwtAuth,
-        EntityManagerInterface $em):Response
-    {
+        UserRepository $userRepository,
+        VideoRepository $videoRepository,
+        EntityManagerInterface $em,
+        $id = null
+    ): Response {
+
+        // check request with checkRequest service.
+        $validateRequest = $checkRequest->validateRequest($request);
+        if (!$validateRequest) {
+            $data['status']  = "error";
+            $data['code']    = 400;
+            $data['message'] = "API cant received request parameters";
+
+            return $this->resJson($data);
+        }
+
+        // Default response.
+        $data = [];
+
+        // Check data from request.
+        // Get auth headers(token).
+        $authToken = $request->headers->get('Authorization');
+        if (!isset($authToken) || empty($authToken)) {
+            $data['status']  = 'error';
+            $data['code']    = 400;
+            $data['message'] = "Forbidden access. API cannot received authorization token";
+
+            return $this->resJson($data);
+        }
+
+        // Make service checkAuthToken.
+        $checkAuthToken = $jwtAuth->checkAuthToken($authToken, $identity = true);
+        // return obj($identity = true) | array-> false,
+
+        if (!is_object($checkAuthToken) && $checkAuthToken['status'] === 'error') {
+            $data['status']  = "error";
+            $data['code']    = 400;
+            $data['message'] = "Error. Something wrong in video update. Try again.";
+            $data['error']   = $checkAuthToken['message'];
+
+            return $this->resJson($data);
+        }
+
+        // Check if exists video .
+        $issetVideo = $videoRepository->findOneBy(['id' => $id,]);
+        if (!is_object($issetVideo) || is_null($issetVideo)) {
+            $data['status']  = "error";
+            $data['code']    = 404;
+            $data['message'] = "Error. The video you are trying to update does not exist.";
+
+            return $this->resJson($data);
+        }
+
+        // check if the user is owner video.
+        $video = $videoRepository->findOneBy([
+            'id' => $id,
+            'user' => $checkAuthToken,
+        ]);
+
+
+        if (!is_object($video) || is_null($video)) {
+            $data['status']  = "error";
+            $data['code']    = 404;
+            $data['message'] = "Error. You cannot update this video.";
+
+            return $this->resJson($data);
+        }
+
+        // Get data from request
+        try {
+            // Get data from request
+            $params = json_decode($request->getContent());
+
+        } catch (Exception $error) {
+            $data['status']  = "error";
+            $data['code']    = 400;
+            $data['message'] = "Error. Something wrong in video create. Try again.";
+            $data['error']   = $error;
+
+            return $this->resJson($data);
+        }
+
+        $title       = (!empty($params->title)) ? trim($params->title) : null;
+        $description = (!empty($params->description)) ? trim($params->description) : null;
+        $url         = (!empty($params->url)) ? trim($params->url) : null;
+
+        if (is_null($title) || is_null($description) || is_null($url)) {
+            return $this->resJson([
+                'status'  => "error",
+                'code'    => 400,
+                'message' => "Any field from create video form is empty.",
+            ]);
+        }
+
+        // validate data
+        //Validate form fields
+        $validator = Validation::createValidator();
+
+        // title
+        $validateTitle = $validator->validate($title, [
+            new NotBlank(),
+            new Length([
+                'min' => 2,
+                'max' => 100,
+            ]),
+        ]);
+        if (count($validateTitle) == !0) {
+            $data['code']  = 400;
+            $data['error'] = 'title field is not valid';
+
+            return $this->resJson($data);
+        }
+
+        // description
+        $validateDescription = $validator->validate($description, [
+            new NotBlank(),
+
+        ]);
+        if (count($validateDescription) == !0) {
+            $data['code']  = 400;
+            $data['error'] = 'description field is not valid';
+
+            return $this->resJson($data);
+        }
+
+        // description
+        $validateUrl = $validator->validate($url, [
+            new Url(),
+        ]);
+        if (count($validateUrl) == !0) {
+            $data['code']  = 400;
+            $data['error'] = 'url field is not valid';
+
+            return $this->resJson($data);
+        }
+        // set values
+        $issetVideo->setTitle($title);
+        $issetVideo->setDescription($description);
+        $issetVideo->setUrl($url);
+        $issetVideo->setUpdatedAt(new DateTime('now'));
+
+        
+        // update in db
+        $em->persist($issetVideo);
+        $em->flush();
+
+        // return response
         return $this->resJson([
-            'message' => ' video update',
+            'status'  => 'success',
+            'code'    => 200,
+            'message' => ' video update successfully',
+            'video_updated' => $issetVideo,
         ]);
     }
 
@@ -479,11 +628,11 @@ class VideoController extends AbstractController
 
         // Find video to delete
         $video = $videoRepository->findOneBy([
-            'id' => $id,
+            'id'   => $id,
             'user' => $checkAuthToken,
         ]);
 
-        if (!$video || !is_object($video)){
+        if (!$video || !is_object($video)) {
             $data['status']  = "error";
             $data['code']    = 404;
             $data['message'] = "Error. El video seleccionado no existe.";
@@ -497,10 +646,10 @@ class VideoController extends AbstractController
 
 
         return $this->resJson([
-            'status' => 'success',
-            'code' => 200,
-            'message'  => ' video was deleted successfully',
-            'video_deleted' => $video
+            'status'        => 'success',
+            'code'          => 200,
+            'message'       => ' video was deleted successfully',
+            'video_deleted' => $video,
         ]);
     }
 }

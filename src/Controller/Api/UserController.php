@@ -273,6 +273,7 @@ class UserController extends AbstractController
      * @param JwtAuth $jwtAuth JwtAuth service.
      * @param CheckRequest $checkRequest
      * @param UserRepository $userRepository
+     * @param VideoRepository $videoRepository
      * @param EntityManagerInterface $em
      * @param null $id
      * @return Response
@@ -282,6 +283,7 @@ class UserController extends AbstractController
         JwtAuth $jwtAuth,
         CheckRequest $checkRequest,
         UserRepository $userRepository,
+        VideoRepository $videoRepository,
         EntityManagerInterface $em,
         $id = null
     ): Response {
@@ -353,19 +355,23 @@ class UserController extends AbstractController
             return $this->resJson($data);
         }
 
-        //TODO: DELETE ALL VIDEOS FROM USER
+       // Delete all videos
+        $videos = $videoRepository->findBy([
+            'user' => $checkAuthToken,
+        ]); // return array
 
-        // Delete user from database
-        //$doctrine = $this->getDoctrine();
-        //$em = $doctrine->getManager();
+        foreach ($videos as $video) {
+            $em->remove($video);
+        }
+
+        // remove user
         $em->remove($user);
         $em->flush();
-
 
         return $this->resJson([
             'status'  => 'success',
             'code' => 200,
-            'message' => 'User deleted!',
+            'message' => 'User account and videos was deleted!',
         ]);
     }
 }

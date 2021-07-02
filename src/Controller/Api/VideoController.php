@@ -116,9 +116,9 @@ class VideoController extends AbstractController
 
         if (count($pagination) === 0) {
             $data = [
-                'status' => 'success',
-                'code'   => 200,
-                'message' => 'No hay videos que mostrar actualmente'
+                'status'  => 'success',
+                'code'    => 200,
+                'message' => 'No hay videos que mostrar actualmente',
             ];
 
             return $this->resJson($data);
@@ -139,21 +139,6 @@ class VideoController extends AbstractController
         return $this->resJson([$data]);
 
 
-        /*$videos = $videoRepository->findAll();
-        if (count($videos) <= 0) {
-            return $this->resJson([
-                'status'  => 'error',
-                'code'    => 400,
-                'message' => 'Ops nothing to see. Create a new video',
-            ]);
-        }
-
-        return $this->resJson([
-            'status'  => 'success',
-            'code'    => 200,
-            'message' => 'Videos list',
-            'videos'  => $videos,
-        ]);*/
     }
 
     /**
@@ -169,7 +154,7 @@ class VideoController extends AbstractController
      * @param PaginatorInterface $paginator
      * @return Response
      */
-    public function getMyVideos(
+    public function getVideosByUser(
         Request $request,
         CheckRequest $checkRequest,
         VideoRepository $videoRepository,
@@ -209,7 +194,7 @@ class VideoController extends AbstractController
         $userId = $checkAuthToken->getId();
 
         // dql query  $dql = "SELECT v FROM App\Entity\Video v WHERE v.user = {$identity->sub} ORDER BY v.id DESC";
-        $dql   = "SELECT v FROM App\Entity\Video v WHERE v.user = {$userId} ORDER BY v.id DESC";
+        $dql   = "SELECT v FROM App\Entity\Video v WHERE v.user = " . $userId . " ORDER BY v.id DESC";
         $query = $em->createQuery($dql);
 
         // Get page parameter from url
@@ -388,5 +373,134 @@ class VideoController extends AbstractController
         ]);
 
 
+    }
+
+    /**
+     * Video detail
+     *
+     * @Route("/detail/{id}", methods={"GET"}, name="app_video_detail")
+     * @param Request $request
+     * @param CheckRequest $checkRequest
+     * @param JwtAuth $jwtAuth
+     * @param EntityManagerInterface $em
+     * @param null $id
+     * @return Response
+     */
+    public function show(
+        Request $request,
+        CheckRequest $checkRequest,
+        JwtAuth $jwtAuth,
+        EntityManagerInterface $em,
+        $id = null
+    ): Response {
+
+
+
+
+        return $this->resJson([
+            'message'  => ' video detail',
+            'video_id' => (int)$id,
+        ]);
+    }
+
+
+    /**
+     * Update video
+     *
+     * @Route("/update", methods={"PUT","PATCH","POST"}, name="app_video_update")
+     * @param Request $request
+     * @param CheckRequest $checkRequest
+     * @param JwtAuth $jwtAuth
+     * @param EntityManagerInterface $em
+     * @return Response
+     */
+    public function update(
+        Request $request,
+        CheckRequest $checkRequest,
+        JwtAuth $jwtAuth,
+        EntityManagerInterface $em):Response
+    {
+        return $this->resJson([
+            'message' => ' video update',
+        ]);
+    }
+
+
+    /**
+     * Delete video
+     *
+     * @Route("/delete/{id}", methods={"DELETE"}, name="app_video_delete")
+     *
+     * @param Request $request
+     * @param CheckRequest $checkRequest
+     * @param JwtAuth $jwtAuth
+     * @param VideoRepository $videoRepository
+     * @param UserRepository $userRepository
+     * @param EntityManagerInterface $em
+     * @param $id
+     * @return Response
+     */
+    public function delete(
+        Request $request,
+        CheckRequest $checkRequest,
+        JwtAuth $jwtAuth,
+        VideoRepository $videoRepository,
+        UserRepository $userRepository,
+        EntityManagerInterface $em,
+        $id = null
+    ): response {
+
+        // Default response
+        $data = [];
+
+        // Check data from request
+        // Get auth headers(token)
+        $authToken = $request->headers->get('Authorization');
+        if (!isset($authToken) || empty($authToken)) {
+            $data['status']  = 'error';
+            $data['code']    = 400;
+            $data['message'] = "Forbidden access. API cannot received authorization token";
+
+            return $this->resJson($data);
+        }
+
+        // Make service checkAuthToken
+        $checkAuthToken = $jwtAuth->checkAuthToken($authToken, $identity = true);
+        // return obj($identity = true) | array,
+
+        if (!is_object($checkAuthToken) && $checkAuthToken['status'] === 'error') {
+            $data['status']  = "error";
+            $data['code']    = 400;
+            $data['message'] = "Error. Something wrong in video delete. Try again.";
+            $data['error']   = $checkAuthToken['message'];
+
+            return $this->resJson($data);
+        }
+
+        // Find video to delete
+        $video = $videoRepository->findOneBy([
+            'id' => $id,
+            'user' => $checkAuthToken,
+        ]);
+
+        if (!$video || !is_object($video)){
+            $data['status']  = "error";
+            $data['code']    = 404;
+            $data['message'] = "Error. El video seleccionado no existe.";
+
+            return $this->resJson($data);
+        }
+
+        // delete video
+        $em->remove($video);
+        $em->flush();
+
+
+        return $this->resJson([
+            'status' => 'success',
+            'code' => 200,
+            'message'  => ' video was deleted successfully',
+            'video_deleted' => $video
+        ]);
     }
 }

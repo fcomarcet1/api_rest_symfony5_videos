@@ -349,6 +349,8 @@ class VideoController extends AbstractController
         // get userId from logged user
         $userId = $checkAuthToken->getId();
 
+        //TODO: comprobar que el video no exista
+
         // create new obj video
         $user = $userRepository->findOneBy([
             'id' => $userId,
@@ -380,24 +382,64 @@ class VideoController extends AbstractController
      *
      * @Route("/detail/{id}", methods={"GET"}, name="app_video_detail")
      * @param Request $request
-     * @param CheckRequest $checkRequest
      * @param JwtAuth $jwtAuth
-     * @param EntityManagerInterface $em
+     * @param VideoRepository $videoRepository
      * @param null $id
      * @return Response
      */
     public function show(
         Request $request,
-        CheckRequest $checkRequest,
         JwtAuth $jwtAuth,
-        EntityManagerInterface $em,
+        VideoRepository $videoRepository,
         $id = null
     ): Response {
 
+        // Default response
+        $data = [];
+
+        // Check data from request
+        // Get auth headers(token)
+        $authToken = $request->headers->get('Authorization');
+        if (!isset($authToken) || empty($authToken)) {
+            $data['status']  = 'error';
+            $data['code']    = 400;
+            $data['message'] = "Forbidden access. API cannot received authorization token";
+
+            return $this->resJson($data);
+        }
+
+        // Make service checkAuthToken
+        $checkAuthToken = $jwtAuth->checkAuthToken($authToken, $identity = true);
+        // return obj($identity = true) | array,
+
+        if (!is_object($checkAuthToken) && $checkAuthToken['status'] === 'error') {
+            $data['status']  = "error";
+            $data['code']    = 400;
+            $data['message'] = "Error. Something wrong in user update. Try again.";
+            $data['error']   = $checkAuthToken['message'];
+
+            return $this->resJson($data);
+        }
+
+        //find video in db
+        $video = $videoRepository->findOneBy([
+            'id' => $id,
+            'user' => $checkAuthToken
+        ]);
+
+        if (!is_object($video) || is_null($video)) {
+            $data['status']  = "error";
+            $data['code']    = 404;
+            $data['message'] = "Error. You cannot see this video details.";
+
+            return $this->resJson($data);
+        }
 
         return $this->resJson([
+            'status'  => 'success',
+            'code' => 200,
             'message'  => ' video detail',
-            'video_id' => (int)$id,
+            'video_detail' => $video,
         ]);
     }
 
@@ -560,7 +602,7 @@ class VideoController extends AbstractController
         $issetVideo->setUrl($url);
         $issetVideo->setUpdatedAt(new DateTime('now'));
 
-        
+
         // update in db
         $em->persist($issetVideo);
         $em->flush();
